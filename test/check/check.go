@@ -11,6 +11,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	conditionsv1 "github.com/openshift/custom-resource-status/conditions/v1"
 	securityapi "github.com/openshift/origin/pkg/security/apis/security"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
@@ -118,6 +120,36 @@ func PlacementListFromComponentDaemonSets(component Component) ([]cnao.Placement
 	}
 
 	return placementList, nil
+}
+
+func getMonitoringNamespace() (string, error) {
+	envVars, err := GetEnvVarsFromDeployment(components.Name)
+	if err != nil {
+		return "", err
+	}
+	for _, envVar := range envVars {
+		if envVar.Name == "MONITORING_NAMESPACE" {
+			return envVar.Value, nil
+		}
+	}
+	return "", errors.New("MONITORING_NAMESPACE env variable not found on operator")
+}
+
+func PrometheusDeployedOnCluster() (bool, error) {
+	monitoringNamespace, err := getMonitoringNamespace()
+	if err != nil {
+		return false, err
+	}
+
+	ns := corev1.Namespace{}
+	err = framework.Global.Client.Get(context.Background(), types.NamespacedName{Name: monitoringNamespace}, &ns)
+	if err == nil {
+		return true, nil
+	} else if apierrors.IsNotFound(err) {
+		return false, nil
+	}
+
+	return false, err
 }
 
 func GetEnvVarsFromDeployment(deploymentName string) ([]corev1.EnvVar, error) {
@@ -245,6 +277,21 @@ func CheckForLeftoverObjects(currentVersion string) {
 	err = framework.Global.Client.List(context.Background(), &serviceAccounts, &listOptions)
 	Expect(err).NotTo(HaveOccurred())
 	Expect(serviceAccounts.Items).To(BeEmpty(), "Found leftover objects from the previous operator version")
+
+	services := corev1.ServiceList{}
+	err = framework.Global.Client.List(context.Background(), &services, &listOptions)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(services.Items).To(BeEmpty(), "Found leftover objects from the previous operator version")
+
+	serviceMonitors := monitoringv1.ServiceMonitorList{}
+	err = framework.Global.Client.List(context.Background(), &serviceMonitors, &listOptions)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(serviceMonitors.Items).To(BeEmpty(), "Found leftover objects from the previous operator version")
+
+	prometheusRules := monitoringv1.PrometheusRuleList{}
+	err = framework.Global.Client.List(context.Background(), &prometheusRules, &listOptions)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(prometheusRules.Items).To(BeEmpty(), "Found leftover objects from the previous operator version")
 }
 
 func KeepCheckingWhile(check func(), while func()) {
@@ -307,6 +354,18 @@ func checkForComponent(component *Component) error {
 		errsAppend(checkForMutatingWebhookConfiguration(component.MutatingWebhookConfiguration))
 	}
 
+	if component.Service != "" {
+		errsAppend(checkForService(component.Service))
+	}
+
+	if component.ServiceMonitor != "" {
+		errsAppend(checkForServiceMonitor(component.ServiceMonitor))
+	}
+
+	if component.PrometheusRule != "" {
+		errsAppend(checkForPrometheusRule(component.PrometheusRule))
+	}
+
 	return errsToErr(errs)
 }
 
@@ -336,6 +395,18 @@ func checkForComponentRemoval(component *Component) error {
 
 	if component.MutatingWebhookConfiguration != "" {
 		errsAppend(checkForMutatingWebhookConfigurationRemoval(component.MutatingWebhookConfiguration))
+	}
+
+	if component.Service != "" {
+		errsAppend(checkForServiceRemoval(component.Service))
+	}
+
+	if component.ServiceMonitor != "" {
+		errsAppend(checkForServiceMonitorRemoval(component.ServiceMonitor))
+	}
+
+	if component.PrometheusRule != "" {
+		errsAppend(checkForPrometheusRuleRemoval(component.PrometheusRule))
 	}
 
 	return errsToErr(errs)
@@ -553,6 +624,56 @@ func checkForMutatingWebhookConfiguration(name string) error {
 	return nil
 }
 
+func checkForService(name string) error {
+	service := corev1.Service{}
+	err := framework.Global.Client.Get(context.Background(), types.NamespacedName{Name: name, Namespace: components.Namespace}, &service)
+	if err != nil {
+		return err
+	}
+
+	err = checkRelationshipLabels(service.GetLabels(), "Service", name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func checkForServiceMonitor(name string) error {
+	monitoringNamespace, err := getMonitoringNamespace()
+	if err != nil {
+		return err
+	}
+
+	serviceMonitor := monitoringv1.ServiceMonitor{}
+	err = framework.Global.Client.Get(context.Background(), types.NamespacedName{Name: name, Namespace: monitoringNamespace}, &serviceMonitor)
+	if err != nil {
+		return err
+	}
+
+	err = checkRelationshipLabels(serviceMonitor.GetLabels(), "ServiceMonitor", name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func checkForPrometheusRule(name string) error {
+	prometheusRule := monitoringv1.PrometheusRule{}
+	err := framework.Global.Client.Get(context.Background(), types.NamespacedName{Name: name, Namespace: components.Namespace}, &prometheusRule)
+	if err != nil {
+		return err
+	}
+
+	err = checkRelationshipLabels(prometheusRule.GetLabels(), "PrometheusRule", name)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func checkRelationshipLabels(labels map[string]string, kind, name string) error {
 	expectedValues := map[string]string{
 		names.COMPONENT_LABEL_KEY:  names.COMPONENT_LABEL_DEFAULT_VALUE,
@@ -595,6 +716,25 @@ func checkForSecretRemoval(name string) error {
 func checkForMutatingWebhookConfigurationRemoval(name string) error {
 	err := framework.Global.Client.Get(context.Background(), types.NamespacedName{Name: name}, &admissionregistrationv1.MutatingWebhookConfiguration{})
 	return isNotFound("MutatingWebhookConfiguration", name, err)
+}
+
+func checkForServiceRemoval(name string) error {
+	err := framework.Global.Client.Get(context.Background(), types.NamespacedName{Name: name, Namespace: components.Namespace}, &corev1.Service{})
+	return isNotFound("Service", name, err)
+}
+
+func checkForServiceMonitorRemoval(name string) error {
+	monitoringNamespace, err := getMonitoringNamespace()
+	if err != nil {
+		return err
+	}
+	err = framework.Global.Client.Get(context.Background(), types.NamespacedName{Name: name, Namespace: monitoringNamespace}, &monitoringv1.ServiceMonitor{})
+	return isNotFound("ServiceMonitor", name, err)
+}
+
+func checkForPrometheusRuleRemoval(name string) error {
+	err := framework.Global.Client.Get(context.Background(), types.NamespacedName{Name: name, Namespace: components.Namespace}, &monitoringv1.PrometheusRule{})
+	return isNotFound("PrometheusRule", name, err)
 }
 
 func isNotFound(componentType string, componentName string, clientGetOutput error) error {

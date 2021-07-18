@@ -8,6 +8,7 @@ import (
 
 	ginkgoreporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
 
+	monitoringv1 "github.com/coreos/prometheus-operator/pkg/apis/monitoring/v1"
 	f "github.com/operator-framework/operator-sdk/pkg/test"
 	framework "github.com/operator-framework/operator-sdk/pkg/test"
 
@@ -38,6 +39,11 @@ func TestE2E(t *testing.T) {
 var _ = BeforeSuite(func() {
 	By("Adding custom resource scheme to framework")
 	err := framework.AddToFrameworkScheme(apis.AddToScheme, &cnaov1.NetworkAddonsConfigList{})
+	Expect(err).ToNot(HaveOccurred())
+
+	err = framework.AddToFrameworkScheme(monitoringv1.AddToScheme, &monitoringv1.ServiceMonitorList{})
+	Expect(err).ToNot(HaveOccurred())
+	err = framework.AddToFrameworkScheme(monitoringv1.AddToScheme, &monitoringv1.PrometheusRuleList{})
 	Expect(err).ToNot(HaveOccurred())
 })
 
