@@ -23,6 +23,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	cnao "github.com/kubevirt/cluster-network-addons-operator/pkg/apis/networkaddonsoperator/shared"
+	"github.com/kubevirt/cluster-network-addons-operator/pkg/controller/networkaddonsconfig"
 	"github.com/kubevirt/cluster-network-addons-operator/pkg/components"
 	"github.com/kubevirt/cluster-network-addons-operator/pkg/network"
 	. "github.com/kubevirt/cluster-network-addons-operator/test/check"
@@ -89,6 +90,14 @@ var _ = Describe("NetworkAddonsConfig", func() {
 				[]Component{MacvtapComponent},
 			),
 		)
+		It("should deploy prometheus if NetworkAddonsConfigSpec is not empty", func() {
+			isMonitoringDeployed, err := networkaddonsconfig.IsMonitoringAvailable(framework.Global.KubeClient)
+			Expect(err).ToNot(HaveOccurred())
+			if !isMonitoringDeployed {
+				Skip("prometheus component not deployed if monitoring namespace is not deployed. skipping test")
+			}
+			testConfigCreate(gvk, cnao.NetworkAddonsConfigSpec{MacvtapCni: &cnao.MacvtapCni{}}, []Component{MonitoringComponent})
+		})
 		//2264
 		It("should be able to deploy all components at once", func() {
 			components := []Component{
