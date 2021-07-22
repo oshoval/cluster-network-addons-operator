@@ -1,10 +1,19 @@
 package monitoring
 
 import (
+	"github.com/prometheus/client_golang/prometheus"
 	"log"
 	"net/http"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+)
+
+var (
+    readyGauge = prometheus.NewGauge(
+    	prometheus.GaugeOpts{
+    		Name: "kubevirt_cnao_ready",
+    		Help: "Operator Components (Deployed and)? Ready",
+    	})
 )
 
 func StartPrometheus() error {
@@ -13,6 +22,8 @@ func StartPrometheus() error {
 
 // startPrometheusEndpoint starts an http server providing a prometheus endpoint
 func startPrometheusEndpoint() error {
+	initGauges()
+
 	go func() {
 		mux := http.NewServeMux()
 		mux.Handle("/metrics", promhttp.Handler())
@@ -27,4 +38,16 @@ func startPrometheusEndpoint() error {
 		}
 	}()
 	return nil
+}
+
+func initGauges() {
+	prometheus.MustRegister(readyGauge)
+}
+
+func SetReadyGauge(isReady bool) {
+	if isReady {
+		readyGauge.Set(1)
+	} else {
+		readyGauge.Set(0)
+	}
 }
