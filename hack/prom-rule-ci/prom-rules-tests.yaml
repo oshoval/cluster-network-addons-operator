@@ -1,0 +1,21 @@
+---
+rule_files:
+  - /tmp/rules.verify.yaml
+
+group_eval_order:
+  - kubevirt.cnao.rules
+
+tests:
+  - interval: 1m
+    input_series:
+      - series: "kubevirt_cnao_num_up_operators"
+        values: "0 0 0 0 0 0"
+
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: CnaoDown
+        exp_alerts:
+          - exp_annotations:
+              summary: "CNAO pod is down."
+            exp_labels:
+              severity: "critical"
