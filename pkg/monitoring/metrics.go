@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics"
 
 	"github.com/kubevirt/cluster-network-addons-operator/pkg/render"
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
@@ -19,8 +20,17 @@ const (
 	defaultServiceAccountName  = "prometheus-k8s"
 )
 
+var (
+	readyGauge = prometheus.NewGauge(
+		prometheus.GaugeOpts{
+			Name: "kubevirt_cnao_ready",
+			Help: "Operator Components (Deployed and)? Ready",
+		})
+)
+
 func init() {
 	metrics.Registry.MustRegister()
+	prometheus.MustRegister(readyGauge)
 }
 
 func RenderMonitoring(manifestDir string, monitoringAvailable bool) ([]*unstructured.Unstructured, error) {
@@ -73,4 +83,12 @@ func getServiceAccount() string {
 		return monitoringServiceAccountFromEnv
 	}
 	return defaultServiceAccountName
+}
+
+func SetReadyGauge(isReady bool) {
+	if isReady {
+		readyGauge.Set(1)
+	} else {
+		readyGauge.Set(0)
+	}
 }
