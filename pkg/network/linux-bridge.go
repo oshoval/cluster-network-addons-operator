@@ -32,6 +32,14 @@ func renderLinuxBridge(conf *cnao.NetworkAddonsConfigSpec, manifestDir string, c
 	data.Data["EnableSCC"] = clusterInfo.SCCAvailable
 	data.Data["Placement"] = conf.PlacementConfiguration.Workloads
 
+	if clusterInfo.SCCAvailable {
+		data.Data["RunAsNonRoot"] = "null"
+		data.Data["RunAsUser"] = "null"
+	} else {
+		data.Data["RunAsNonRoot"] = "true"
+		data.Data["RunAsUser"] = "1000"
+	}
+
 	objs, err := render.RenderDir(filepath.Join(manifestDir, "linux-bridge"), &data)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to render linux-bridge manifests")
