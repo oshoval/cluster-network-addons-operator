@@ -21,3 +21,7 @@ echo 'Cleaning up ...'
 ./cluster/kubectl.sh delete --ignore-not-found -f _out/cluster-network-addons/${VERSION}/namespace.yaml
 ./cluster/kubectl.sh delete --ignore-not-found -f _out/cluster-network-addons/${VERSION}/network-addons-config.crd.yaml
 ./cluster/kubectl.sh delete --ignore-not-found -f _out/cluster-network-addons/${VERSION}/operator.yaml
+
+if [[ $DEPLOY_CERT_MANAGER == true ]]; then
+  ./cluster/kubectl.sh delete --ignore-not-found namespace cert-manager
+fi

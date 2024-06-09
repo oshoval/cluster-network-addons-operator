@@ -23,3 +23,10 @@ if [[ ! $(./cluster/kubectl.sh -n cluster-network-addons wait deployment cluster
 	./cluster/kubectl.sh describe deployment cluster-network-addons-operator -n cluster-network-addons
 	exit 1
 fi
+
+if [[ $DEPLOY_CERT_MANAGER == true ]]; then
+	CERT_MANAGER_VERSION="v1.14.4"
+	echo "Installing cert-manager..."
+	manifest="https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
+	cluster/kubectl.sh apply -f "$manifest"
+fi
