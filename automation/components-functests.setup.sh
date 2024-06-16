@@ -22,7 +22,8 @@ source hack/components/yaml-utils.sh
 source cluster/cluster.sh
 
 # Spin up Kubernetes cluster
-make cluster-down cluster-up
+make cluster-down || true
+make cluster-up
 
 # Export .kubeconfig full path, so it will be possible
 # to use 'kubectl' directly from the component directory path

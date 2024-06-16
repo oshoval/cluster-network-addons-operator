@@ -24,8 +24,13 @@ if [[ "${KUBEVIRT_PROVIDER}" == external ]]; then
     manifest_registry=$DEV_IMAGE_REGISTRY
     push_registry=$manifest_registry
 else
-    manifest_registry=registry:5000
-    push_registry=127.0.0.1:$(./cluster/cli.sh ports registry | tr -d '\r')
+    if [[ "${KUBEVIRT_PROVIDER}" != kind-ovn ]]; then
+        manifest_registry=registry:5000
+        push_registry=127.0.0.1:$(./cluster/cli.sh ports registry | tr -d '\r')
+    else
+        manifest_registry=127.0.0.1:5000
+        push_registry=$manifest_registry
+    fi
 fi
 
 # Cleanup previously generated manifests
