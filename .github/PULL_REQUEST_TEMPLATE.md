@@ -12,8 +12,6 @@ If you don't comply with these rules, you waste your energy, time of reviewers
 and cause suffering of future generations.
 -->
 
-**What this PR does / why we need it**:
-
 **Special notes for your reviewer**:
 
 **Release note**:
