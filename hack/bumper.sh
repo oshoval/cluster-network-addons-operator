@@ -12,6 +12,7 @@
 # optional: to update go lang level use for example
 # export DESIRED_VERSION=1.18
 
+set -x
 SKIP=${SKIP:-false}
 
 if [ $# -ne 3 ]; then
