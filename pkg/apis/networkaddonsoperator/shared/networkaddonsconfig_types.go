@@ -54,7 +54,9 @@ type Placement struct {
 type Multus struct{}
 
 // MultusDynamicNetworks A multus extension enabling hot-plug and hot-unplug of Pod interfaces
-type MultusDynamicNetworks struct{}
+type MultusDynamicNetworks struct {
+	HostCRISocketPath string `json:"hostCriSocketPath,omitempty"`
+}
 
 // LinuxBridge plugin allows users to create a bridge and add the host and the container to it
 type LinuxBridge struct{}

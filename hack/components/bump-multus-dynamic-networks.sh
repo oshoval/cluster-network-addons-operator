@@ -23,6 +23,7 @@ function __parametize_by_object() {
         yaml-utils::update_param ${f} spec.template.spec.containers[0].image  '{{ .MultusDynamicNetworksControllerImage }}'
         yaml-utils::set_param ${f} spec.template.spec.affinity '{{ toYaml .Placement.Affinity | nindent 8 }}'
         yaml-utils::update_param ${f} spec.template.spec.tolerations '{{ toYaml .Placement.Tolerations | nindent 8 }}'
+        yaml-utils::update_param ${f} spec.template.spec.volumes\(name=="cri-socket"\).hostPath.path  '{{ .HostCRISocketPath }}'
         yaml-utils::remove_single_quotes_from_yaml ${f}
         ;;
       ./ServiceAccount_dynamic-networks-controller.yaml)
