@@ -55,6 +55,7 @@ type Multus struct{}
 
 // MultusDynamicNetworks A multus extension enabling hot-plug and hot-unplug of Pod interfaces
 type MultusDynamicNetworks struct {
+	// HostCriSocketPath defines the path to the CRI socket on the host
 	HostCRISocketPath string `json:"hostCriSocketPath,omitempty"`
 }
 
